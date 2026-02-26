@@ -32,16 +32,18 @@ def notifications_handler(bus, message):
     # Return True to continue listening
     return True
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--log", help='path/to/file.log', default='mattermost-monitor.log')
-args = parser.parse_args()
-
 str_format = '%(asctime)s %(levelname)s %(message)s'
 logging.basicConfig(stream=sys.stdout,format=str_format,level=logging.DEBUG)
 log = logging.getLogger('mattermost-monitor')
 logHandler = TimedRotatingFileHandler(args.log, when='W0', backupCount=3)
 logHandler.setFormatter(logging.Formatter(str_format))
 log.addHandler(logHandler)
+
+log.info("=========================== Listening for Mattermost direct message notifications...")
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--log", help='path/to/file.log', default='mattermost-monitor.log')
+args = parser.parse_args()
 
 # Set up D-Bus loop
 DBusGMainLoop(set_as_default=True)
@@ -60,7 +62,6 @@ bus.add_message_filter(notifications_handler)
 
 # Start the main loop
 main_loop = GLib.MainLoop()
-log.info("=========================== Listening for Mattermost direct message notifications...")
 
 try:
     main_loop.run()
