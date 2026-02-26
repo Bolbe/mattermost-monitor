@@ -6,6 +6,10 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 import argparse
 
+
+def signal_message():
+    log.info("Received Mattermost notification signal. Turn on the light.")
+    
 def notifications_handler(bus, message):
     """Handle incoming notifications"""
     args = message.get_args_list()
@@ -17,11 +21,11 @@ def notifications_handler(bus, message):
      
 # Received notification from Mattermost:
 #   Summary: GitLab Mattermost: Direct Message
-#   Body: @Christian Barre: ldskfqesdfkùzeakmù
+#   Body: @Christian Barre: blabla
 
         # If app_name contains Mattermost and Summarry contains "Direct Message", we can assume it's a Mattermost notification
         if "Mattermost" in app_name and "Direct Message" in summary:
-            log.info(f"\nReceived notification from {app_name}:")
+            log.info(f"------ Received notification from {app_name}:")
             log.info(f"Summary: {summary}")
             log.info(f"Body: {body}")
         
@@ -29,7 +33,7 @@ def notifications_handler(bus, message):
     return True
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--log", help='path/to/logfile.txt', default='~/mattermost-monitor-log.txt')
+parser.add_argument("--log", help='path/to/file.log', default='mattermost-monitor.log')
 args = parser.parse_args()
 
 str_format = '%(asctime)s %(levelname)s %(message)s'
@@ -56,7 +60,7 @@ bus.add_message_filter(notifications_handler)
 
 # Start the main loop
 main_loop = GLib.MainLoop()
-log.info("Listening for Mattermost direct message notifications...")
+log.info("=========================== Listening for Mattermost direct message notifications...")
 
 try:
     main_loop.run()
