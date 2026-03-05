@@ -1,12 +1,16 @@
 import serial
 import time
+import sys
 
 # Adjust port name!
 # Windows: 'COM3'
 # Linux: '/dev/ttyACM0'
 # macOS: '/dev/tty.usbmodemXXXX'
-print("Opening serial port...")
-ser = serial.Serial('/dev/tty.usbmodem311101', 115200, timeout=1)
+port = '/dev/tty.usbmodem311401'  # Change this to your Pico's serial port
+if len(sys.argv) > 1:
+    port = sys.argv[1]
+print(f"Opening serial port {port}")
+ser = serial.Serial(port, 115200, timeout=1)
 print("Opened.")
 
 while True:

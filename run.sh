@@ -13,10 +13,6 @@ if [ -f "$PID_FILE" ]; then
     if ps -p "$PID" > /dev/null; then
         echo "mattermost-monitor is already running with PID $PID"
         exit 1
-    else
-        # PID file exists but process is not running
-        echo "Removing stale PID file"
-        rm "$PID_FILE"
     fi
 fi
 
