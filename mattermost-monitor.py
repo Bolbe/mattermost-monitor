@@ -24,7 +24,7 @@ log.addHandler(logHandler)
 port = args.port
 if not port:
     for filename in os.listdir('/dev'):
-        if ('usbmodem' in filename) or ('ttyACM' in filename) or ('ttyUSB' in filename) or ('COM' in filename):
+        if ('usbmodem' in filename) or ('ttyACM' in filename) or ('ttyUSB' in filename):
             port = f'/dev/{filename}'
             break
 
