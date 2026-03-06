@@ -24,7 +24,7 @@ log.addHandler(logHandler)
 port = args.port
 if not port:
     for filename in os.listdir('/dev'):
-        if 'usbmodem' in filename:
+        if ('usbmodem' in filename) or ('ttyACM' in filename) or ('ttyUSB' in filename) or ('COM' in filename):
             port = f'/dev/{filename}'
             break
 
@@ -32,10 +32,6 @@ log.info(f"===================== Opening serial port {port}")
 ser = serial.Serial(port, 115200, timeout=1)
 log.info("Opened.")
 log.info("=========================== Listening for Mattermost direct message notifications...")
-
-def signal_message():
-    log.info("Received Mattermost notification signal. Turn on the light.")
-    ser.write(b'\x07')
     
 def notifications_handler(bus, message):
     """Handle incoming notifications"""
@@ -55,6 +51,7 @@ def notifications_handler(bus, message):
             log.info(f"------ Received notification from {app_name}:")
             log.info(f"Summary: {summary}")
             log.info(f"Body: {body}")
+            ser.write(b'A')
         
     # Return True to continue listening
     return True
