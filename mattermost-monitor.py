@@ -1,12 +1,14 @@
 import dbus
+import dbus.service
 import sys
 import serial
-from dbus.mainloop.glib import DBusGMainLoop
+import dbus.mainloop.glib
 from gi.repository import GLib
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import argparse
 import os
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", help='Path to serial port, e.g. /dev/tty.usbmodem311101', default='')
@@ -28,11 +30,55 @@ if not port:
             port = f'/dev/{filename}'
             break
 
-log.info(f"===================== Opening serial port {port}")
-ser = serial.Serial(port, 115200, timeout=1)
+log.info(f"Opening serial port {port}")
+serial_port = serial.Serial(port, 115200, timeout=1)
 log.info("Opened.")
-log.info("=========================== Listening for Mattermost direct message notifications...")
+log.info("Listening for Mattermost direct message notifications...")
     
+class TriggerService(dbus.service.Object):
+
+    # Define the D-Bus service name and object path
+    SERVICE_NAME = "gyro.monitor.TriggerService"
+    OBJECT_PATH = "/gyro/monitor/TriggerService"
+    INTERFACE_NAME = "gyro.monitor.TriggerInterface"
+
+    def __init__(self, bus):
+        bus_name = dbus.service.BusName(TriggerService.SERVICE_NAME, bus)
+        
+        # Initialize the service object
+        super().__init__(bus_name, TriggerService.OBJECT_PATH)
+        
+        log.info(f"Service started: {TriggerService.SERVICE_NAME}")
+        log.info(f"Object path: {TriggerService.OBJECT_PATH}")
+    
+    # dbus-send --session --print-reply --dest=gyro.monitor.TriggerService /gyro/monitor/TriggerService gyro.monitor.TriggerInterface.trigger string:"dummy"
+    @dbus.service.method(INTERFACE_NAME, in_signature='s', out_signature='s')
+    def trigger(self, message):
+        log.info(f"Received trigger call with message: {message}")
+        send_serial_byte_array(b'A')
+        return "Gyro triggered successfully!"
+
+    # dbus-send --session --print-reply --dest=gyro.monitor.TriggerService /gyro/monitor/TriggerService gyro.monitor.TriggerInterface.status
+    @dbus.service.method(INTERFACE_NAME, out_signature='s')
+    def status(self):
+        log.info("Received status request")
+        return "Mattermost monitor is running and listening for notifications."
+
+last_call_time = 0
+
+def send_serial_byte_array(ba):
+    # if this function was called less then 5 seconds ago, just ignore. This is to prevent spamming the serial port if multiple notifications arrive in a short time.
+    # Get time of last call from a global variable
+    global last_call_time
+    current_time = time.time()
+    if current_time - last_call_time < 5:
+        log.warning("Ignoring call to send_serial_byte_array because it was called less than 5 seconds ago")
+        return
+    last_call_time = current_time
+
+    log.info(f"Sending serial byte array: {ba}")
+    serial_port.write(ba)
+
 def notifications_handler(bus, message):
     """Handle incoming notifications"""
     args = message.get_args_list()
@@ -51,14 +97,13 @@ def notifications_handler(bus, message):
             log.info(f"------ Received notification from {app_name}:")
             log.info(f"Summary: {summary}")
             log.info(f"Body: {body}")
-            ser.write(b'A')
+            send_serial_byte_array(b'A')
         
     # Return True to continue listening
     return True
 
-
 # Set up D-Bus loop
-DBusGMainLoop(set_as_default=True)
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 # Connect to the session bus
 bus = dbus.SessionBus()
@@ -72,6 +117,9 @@ bus.add_match_string(
 )
 bus.add_message_filter(notifications_handler)
 
+# Create the service
+triggerService = TriggerService(bus)
+
 # Start the main loop
 main_loop = GLib.MainLoop()
 
@@ -79,3 +127,44 @@ try:
     main_loop.run()
 except KeyboardInterrupt:
     log.info("Stopping notification listener")
+
+# method call time=1774522803.110563 sender=:1.52 -> destination=:1.36 serial=187 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
+#    string "Mattermost"
+#    uint32 0
+#    string ""
+#    string "GitLab Mattermost: Direct Message"
+#    string "@Christian Barre: yo"
+#    array [
+#       string "default"
+#       string "View"
+#    ]
+#    array [
+#       dict entry(
+#          string "sender-pid"
+#          variant             uint32 14921
+#       )
+#       dict entry(
+#          string "desktop-entry"
+#          variant             string "Mattermost"
+#       )
+#       dict entry(
+#          string "urgency"
+#          variant             byte 1
+#       )
+#       dict entry(
+#          string "image-data"
+#          variant             struct {
+#                int32 48
+#                int32 48
+#                int32 192
+#                boolean true
+#                int32 8
+#                int32 4
+#                array of bytes [
+#                   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 20 40 80 10
+#                   28 42 7a 7f 28 41 7b bf 29 42 7b ef 28 42 7b ff 28 42 7b ff
+#                ]
+#             }
+#       )
+#    ]
+#    int32 -1
