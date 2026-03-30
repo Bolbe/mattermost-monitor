@@ -123,6 +123,9 @@ triggerService = TriggerService(bus)
 # Start the main loop
 main_loop = GLib.MainLoop()
 
+# Trigger the gyro to show it is working.
+send_serial_byte_array(b'A')
+
 try:
     main_loop.run()
 except KeyboardInterrupt:
