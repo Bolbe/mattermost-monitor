@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Set DELAY to the first argument or default to 0 if not provided
+DELAY=${1:-0}
+
+echo "Delaying start by $DELAY seconds..."
+sleep "$DELAY"
+
 # Use a directory in the user's home folder
 PID_FILE="$HOME/.local/run/mattermost-monitor.pid"
 PID_DIR="$(dirname "$PID_FILE")"
