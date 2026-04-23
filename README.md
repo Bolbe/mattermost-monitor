@@ -31,5 +31,6 @@ WantedBy=default.target
 
 systemctl --user daemon-reload
 systemctl --user enable --now mattermost-monitor.service
-loginctl enable-linger fiym7331
+systemctl --user restart mattermost-monitor.service
+
 
