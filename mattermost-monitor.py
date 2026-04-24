@@ -23,16 +23,31 @@ logHandler.setFormatter(logging.Formatter(str_format))
 log.addHandler(logHandler)
 
 # If args.port is empty, look for the first file in /dev that contains "usbmodem" and use that as the port
-port = args.port
-if not port:
-    for filename in os.listdir('/dev'):
-        if ('usbmodem' in filename) or ('ttyACM' in filename) or ('ttyUSB' in filename):
-            port = f'/dev/{filename}'
-            break
+serial_port = None
 
-log.info(f"Opening serial port {port}")
-serial_port = serial.Serial(port, 115200, timeout=1)
-log.info("Opened.")
+def find_serial_port():
+    return args.port or "/dev/gyro-monitor"
+
+def connect_serial():
+    global serial_port
+
+    while True:
+        try:
+            port = find_serial_port()
+            if not port:
+                raise Exception("No USB serial device found")
+
+            log.info(f"Opening serial port {port}")
+            serial_port = serial.Serial(port, 115200, timeout=1)
+            log.info("Opened.")
+            return
+
+        except Exception as e:
+            log.warning(f"Serial connection failed: {e} - Retrying in 10 minutes...")
+            time.sleep(600)
+
+connect_serial()
+
 log.info("Listening for Mattermost direct message notifications...")
     
 class TriggerService(dbus.service.Object):
@@ -70,6 +85,8 @@ def send_serial_byte_array(ba):
     # if this function was called less then 5 seconds ago, just ignore. This is to prevent spamming the serial port if multiple notifications arrive in a short time.
     # Get time of last call from a global variable
     global last_call_time
+    global serial_port
+
     current_time = time.time()
     if current_time - last_call_time < 5:
         log.warning("Ignoring call to send_serial_byte_array because it was called less than 5 seconds ago")
@@ -77,7 +94,18 @@ def send_serial_byte_array(ba):
     last_call_time = current_time
 
     log.info(f"Sending serial byte array: {ba}")
-    serial_port.write(ba)
+    try:
+        serial_port.write(ba)
+
+    except Exception as e:
+        log.warning(f"Serial write failed: {e}")
+        try:
+            serial_port.close()
+        except:
+            pass
+
+        connect_serial()
+        serial_port.write(ba)
 
 def notifications_handler(bus, message):
     """Handle incoming notifications"""
@@ -130,44 +158,3 @@ try:
     main_loop.run()
 except KeyboardInterrupt:
     log.info("Stopping notification listener")
-
-# method call time=1774522803.110563 sender=:1.52 -> destination=:1.36 serial=187 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
-#    string "Mattermost"
-#    uint32 0
-#    string ""
-#    string "GitLab Mattermost: Direct Message"
-#    string "@Christian Barre: yo"
-#    array [
-#       string "default"
-#       string "View"
-#    ]
-#    array [
-#       dict entry(
-#          string "sender-pid"
-#          variant             uint32 14921
-#       )
-#       dict entry(
-#          string "desktop-entry"
-#          variant             string "Mattermost"
-#       )
-#       dict entry(
-#          string "urgency"
-#          variant             byte 1
-#       )
-#       dict entry(
-#          string "image-data"
-#          variant             struct {
-#                int32 48
-#                int32 48
-#                int32 192
-#                boolean true
-#                int32 8
-#                int32 4
-#                array of bytes [
-#                   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 20 40 80 10
-#                   28 42 7a 7f 28 41 7b bf 29 42 7b ef 28 42 7b ff 28 42 7b ff
-#                ]
-#             }
-#       )
-#    ]
-#    int32 -1
