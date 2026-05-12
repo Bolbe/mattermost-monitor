@@ -45,7 +45,9 @@ $ sudo udevadm trigger
 Unplug, plug in, then
 $ ls -l /dev/gyro-monitor
 
-## Example of trace from D-BUS
+## Example of traces from D-BUS
+
+$ dbus-monitor
 
 method call time=1774522803.110563 sender=:1.52 -> destination=:1.36 serial=187 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
 string "Mattermost"
@@ -87,3 +89,37 @@ array [
     )
 ]
 int32 -1
+
+method call time=1778595696.787876 sender=:1.134 -> destination=org.freedesktop.Notifications serial=405 path=/org/freedesktop/Notifications; interface=org.freedesktop.Notifications; member=Notify
+   string "Microsoft Edge"
+   uint32 0
+   string "file:///tmp/user/1000/com.microsoft.Edge.scoped_dir.kvxuRq/logo.png"
+   string "PARENT Paul Ext INNOV/IT-S"
+   string "teams.microsoft.com
+
+test"
+   array [
+      string "default"
+      string "Activate"
+      string "settings"
+      string "Settings"
+   ]
+   array [
+      dict entry(
+         string "desktop-entry"
+         variant             string "microsoft-edge"
+      )
+      dict entry(
+         string "image-path"
+         variant             string "/tmp/user/1000/com.microsoft.Edge.scoped_dir.kvxuRq/icon.png"
+      )
+      dict entry(
+         string "image_path"
+         variant             string "/tmp/user/1000/com.microsoft.Edge.scoped_dir.kvxuRq/icon.png"
+      )
+      dict entry(
+         string "urgency"
+         variant             byte 2
+      )
+   ]
+   int32 0
