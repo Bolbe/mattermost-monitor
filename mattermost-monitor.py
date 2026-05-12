@@ -112,19 +112,25 @@ def notifications_handler(bus, message):
     args = message.get_args_list()
     
     if len(args) >= 5:  # Notification messages have standard format
-        app_name = args[0]
-        summary = args[3]
-        body = args[4]
+        string0 = args[0]
+        string3 = args[3]
+        string4 = args[4]
      
 # Received notification from Mattermost:
-#   Summary: GitLab Mattermost: Direct Message
-#   Body: @John Doe: blabla
+#   string0 "Mattermost"
+#   string3: "GitLab Mattermost: Direct Message"
+#   string4: "@John Doe: blabla"
 
-        # If app_name contains Mattermost and Summarry contains "Direct Message", we can assume it's a Mattermost notification
-        if "Mattermost" in app_name and "Direct Message" in summary:
-            log.info(f"------ Received notification from {app_name}:")
-            log.info(f"Summary: {summary}")
-            log.info(f"Body: {body}")
+# Received notification from Microsoft Teams:
+#   string0 "Microsoft Edge"
+#   string "Doe John Ext INNOV/IT-S"
+#   string "teams.microsoft.com 
+# test"
+
+        if ("Mattermost" in string0 and "Direct Message" in string3) or ("Microsoft Edge" in string0 and "teams.microsoft.com" in string4):
+            log.info(f"------ Received notification from {string0}:")
+            log.info(f"string3: {string3}")
+            log.info(f"string4: {string4}")
             send_serial_byte_array(b'A')
         
     # Return True to continue listening
