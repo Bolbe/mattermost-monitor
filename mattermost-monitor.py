@@ -24,6 +24,9 @@ log.addHandler(logHandler)
 
 # If args.port is empty, look for the first file in /dev that contains "usbmodem" and use that as the port
 serial_port = None
+last_call_time = 0
+session_locked = False
+delayed_notification = False
 
 def find_serial_port():
     return args.port or "/dev/gyro-monitor"
@@ -79,8 +82,6 @@ class TriggerService(dbus.service.Object):
         log.info("Received status request")
         return "Mattermost monitor is running and listening for notifications."
 
-last_call_time = 0
-
 def send_serial_byte_array(ba):
     # if this function was called less then 5 seconds ago, just ignore. This is to prevent spamming the serial port if multiple notifications arrive in a short time.
     # Get time of last call from a global variable
@@ -109,6 +110,8 @@ def send_serial_byte_array(ba):
 
 def notifications_handler(bus, message):
     """Handle incoming notifications"""
+    global delayed_notification
+
     args = message.get_args_list()
     
     if len(args) >= 5:  # Notification messages have standard format
@@ -131,10 +134,30 @@ def notifications_handler(bus, message):
             log.info(f"------ Received notification from {string0}:")
             log.info(f"string3: {string3}")
             log.info(f"string4: {string4}")
+            # If session is locked, do not trigger the gyro, just set the delayed_notification flag.
+            if session_locked:
+                log.info("Session is locked, delay notification")
+                delayed_notification = True
+                return True
             send_serial_byte_array(b'A')
         
     # Return True to continue listening
     return True
+
+def on_active_changed(active):
+    global session_locked
+    global delayed_notification
+
+    if active:
+        session_locked = True
+        log.info("Session is locked, ignoring notifications")
+        
+    else:
+        session_locked = False
+        log.info("Session is unlocked, processing delayed notifications")
+        if delayed_notification:
+            send_serial_byte_array(b'A')
+            delayed_notification = False
 
 # Set up D-Bus loop
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -150,6 +173,12 @@ bus.add_match_string(
     "eavesdrop=true"
 )
 bus.add_message_filter(notifications_handler)
+
+bus.add_signal_receiver(
+    on_active_changed,
+    dbus_interface="org.gnome.ScreenSaver",
+    signal_name="ActiveChanged"
+)
 
 # Create the service
 triggerService = TriggerService(bus)
